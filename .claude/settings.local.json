@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(npm run:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(dir \"C:\\\\Project\\\\vue\\\\rtsp-player-extension\\\\node_modules\\\\@foxglove\")",
+      "WebSearch",
+      "WebFetch(domain:foxglove.dev)"
+    ]
+  }
+}

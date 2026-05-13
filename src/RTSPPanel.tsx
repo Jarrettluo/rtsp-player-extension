@@ -1,4 +1,4 @@
-import { Immutable, MessageEvent, PanelExtensionContext} from "@foxglove/studio";
+import { Immutable, MessageEvent, PanelExtensionContext, SettingsTree, SettingsTreeAction } from "@foxglove/studio";
 import { useCallback, useLayoutEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
@@ -13,17 +13,62 @@ interface RtspInfo {
   timestamp: Timestamp;
 }
 
+interface PanelSettings {
+  panelTitle: string;
+  rtspUrl: string;
+}
+
+const DEFAULT_SETTINGS: PanelSettings = {
+  panelTitle: "RTSP流媒体播放",
+  rtspUrl: "localhost:8990",
+};
+
 const frameStyle = {
   overflow:'hidden',
   height:'100%',
   width:'100%',
 };
 
-const DEFAULT_RTSP_URL = 'http://127.0.0.1:8888/demo1';
-const RTSP_TOPIC = '/drive/chassis_code';
-
 function RTSPPanel({ context }: { context: PanelExtensionContext }): JSX.Element {
-  const [rtspUrl, setRtspUrl] = useState<string>(DEFAULT_RTSP_URL);
+  const [settings, setSettings] = useState<PanelSettings>(DEFAULT_SETTINGS);
+  const [rtspUrl, setRtspUrl] = useState<string>(DEFAULT_SETTINGS.rtspUrl);
+
+  const handleSettingsChange = useCallback((action: SettingsTreeAction) => {
+    if (action.action === "update") {
+      const path = action.payload.path;
+      const value = action.payload.value;
+      const key = path[0] as keyof PanelSettings;
+      setSettings((prev) => {
+        const newSettings = { ...prev, [key]: value };
+        context.saveState(newSettings);
+        if (key === "rtspUrl") {
+          setRtspUrl(value as string);
+        }
+        return newSettings;
+      });
+    }
+  }, [context]);
+
+  const settingsTree: SettingsTree = {
+    actionHandler: handleSettingsChange,
+    nodes: {
+      general: {
+        label: "Settings",
+        fields: {
+          panelTitle: {
+            input: "string",
+            label: "Panel Title",
+            value: settings.panelTitle,
+          },
+          rtspUrl: {
+            input: "string",
+            label: "RTSP URL",
+            value: settings.rtspUrl,
+          },
+        },
+      },
+    },
+  };
 
   const handleMessages = useCallback((messages: Immutable<MessageEvent[]>) => {
     if (!messages || messages.length === 0) {
@@ -38,6 +83,17 @@ function RTSPPanel({ context }: { context: PanelExtensionContext }): JSX.Element
   }, []);
 
   useLayoutEffect(() => {
+    // Restore saved settings
+    const saved = context.initialState as Partial<PanelSettings> | undefined;
+    if (saved) {
+      setSettings((prev) => ({ ...prev, ...saved }));
+      if (saved.rtspUrl) {
+        setRtspUrl(saved.rtspUrl);
+      }
+    }
+
+    context.updatePanelSettingsEditor(settingsTree);
+
     context.onRender = (renderState, done) => {
       if (renderState.currentFrame) {
         handleMessages(renderState.currentFrame);
@@ -46,8 +102,8 @@ function RTSPPanel({ context }: { context: PanelExtensionContext }): JSX.Element
     };
 
     context.watch("currentFrame");
-    context.subscribe([{ topic: RTSP_TOPIC }]);
-  }, [context, handleMessages]);
+    context.subscribe([{ topic: "/drive/chassis_code" }]);
+  }, [context, handleMessages, settingsTree]);
 
   return (
     <iframe
