@@ -1,13 +1,13 @@
 {
   "name": "rtsp-player-extension",
-  "displayName": "rtsp-player-extension",
-  "description": "",
+  "displayName": "RTSP Player",
+  "description": "A Foxglove Studio extension for playing RTSP video streams",
   "publisher": "orienlink",
-  "homepage": "",
+  "homepage": "https://github.com/Jarrettluo/rtsp-player-extension",
   "version": "0.0.1",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "./dist/extension.js",
-  "keywords": [],
+  "keywords": ["rtsp", "foxglove", "video", "streaming"],
   "scripts": {
     "build": "foxglove-extension build",
     "foxglove:prepublish": "foxglove-extension build --mode production",

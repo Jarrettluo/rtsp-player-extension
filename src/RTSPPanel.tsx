@@ -20,7 +20,7 @@ interface PanelSettings {
 
 const DEFAULT_SETTINGS: PanelSettings = {
   panelTitle: "RTSP流媒体播放",
-  rtspUrl: "localhost:8990",
+  rtspUrl: "rtsp://localhost:8554/stream1",
 };
 
 const frameStyle = {
