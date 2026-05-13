@@ -1,16 +1,16 @@
 import { Immutable, MessageEvent, PanelExtensionContext} from "@foxglove/studio";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
-interface Timestap{
-  sec:number;
-  nsec:number;
+interface Timestamp {
+  sec: number;
+  nsec: number;
 }
 
 interface RtspInfo {
   rtsp_url: string;
   chassis_code: string;
-  timestamp: Timestap;
+  timestamp: Timestamp;
 }
 
 const frameStyle = {
@@ -19,69 +19,40 @@ const frameStyle = {
   width:'100%',
 };
 
+const DEFAULT_RTSP_URL = 'http://127.0.0.1:8888/demo1';
+const RTSP_TOPIC = '/drive/chassis_code';
+
 function RTSPPanel({ context }: { context: PanelExtensionContext }): JSX.Element {
-  const [messages, setMessages] = useState<undefined | Immutable<MessageEvent[]>>();
-  const [rtspUrl, setRtspUrl] = useState<string>();
+  const [rtspUrl, setRtspUrl] = useState<string>(DEFAULT_RTSP_URL);
 
-  const [renderDone, setRenderDone] = useState<(() => void) | undefined>();
+  const handleMessages = useCallback((messages: Immutable<MessageEvent[]>) => {
+    if (!messages || messages.length === 0) {
+      return;
+    }
+    // Get the last message's RTSP URL
+    const lastMessage = messages[messages.length - 1]!;
+    const info = lastMessage.message as RtspInfo;
+    if (info?.rtsp_url) {
+      setRtspUrl(info.rtsp_url);
+    }
+  }, []);
 
-  // We use a layout effect to setup render handling for our panel. We also setup some topic subscriptions.
   useLayoutEffect(() => {
-    // The render handler is run by the broader studio system during playback when your panel
-    // needs to render because the fields it is watching have changed. How you handle rendering depends on your framework.
-    // You can only setup one render handler - usually early on in setting up your panel.
-    //
-    // Without a render handler your panel will never receive updates.
-    //
-    // The render handler could be invoked as often as 60hz during playback if fields are changing often.
     context.onRender = (renderState, done) => {
-      // render functions receive a _done_ callback. You MUST call this callback to indicate your panel has finished rendering.
-      // Your panel will not receive another render callback until _done_ is called from a prior render. If your panel is not done
-      // rendering before the next render call, studio shows a notification to the user that your panel is delayed.
-      //
-      // Set the done callback into a state variable to trigger a re-render.
-      setRenderDone(() => done);
-
-      // currentFrame has messages on subscribed topics since the last render call
-      setMessages(renderState.currentFrame);
+      if (renderState.currentFrame) {
+        handleMessages(renderState.currentFrame);
+      }
+      done();
     };
 
-
-    // After adding a render handler, you must indicate which fields from RenderState will trigger updates.
-    // If you do not watch any fields then your panel will never render since the panel context will assume you do not want any updates.
-
-    // tell the panel context that we care about any update to the _topic_ field of RenderState
-    //context.watch("topics");
-
-    // tell the panel context we want messages for the current frame for topics we've subscribed to
-    // This corresponds to the _currentFrame_ field of render state.
     context.watch("currentFrame");
-
-    // subscribe to some topics, you could do this within other effects, based on input fields, etc
-    // Once you subscribe to topics, currentFrame will contain message events from those topics (assuming there are messages).
-    context.subscribe([{ topic: "/drive/chassis_code" }]);
-  }, [context]);
-
-  let rtsp_url:string = 'http://127.0.0.1:8888/demo1';
-  useEffect(() => {
-    if (messages) {
-        messages.forEach(m => {
-           let info = m.message as RtspInfo;
-           rtsp_url = info.rtsp_url;
-           setRtspUrl(rtsp_url)
-        })
-    }
-  }, [messages]);
-
-  // invoke the done callback once the render is complete
-  useEffect(() => {
-    renderDone?.();
-  }, [renderDone]);
+    context.subscribe([{ topic: RTSP_TOPIC }]);
+  }, [context, handleMessages]);
 
   return (
-    <iframe     
+    <iframe
        style={ frameStyle }
-       src = { rtspUrl as string } 
+       src={ rtspUrl }
        allow="autoplay">
     </iframe>
   );
